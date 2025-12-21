@@ -2,18 +2,19 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using Zenject;
-using Cysharp.Threading.Tasks;
 
 public class SalesTable : MonoBehaviour
 {
     public GrassInventory tableInventory;
     public GrassInventory playerInventory;
-    public float sellInterval = 1f;
+    public QueueManager queueManager;
+    public Transform exitPoint;
+    public float customerCheckInterval = 1f;
 
     MoneyManager moneyManager;
     Dictionary<GrassType, GrassData> grassDataCache = new Dictionary<GrassType, GrassData>();
 
-    bool isSelling = false;
+    float customerCheckTimer;
 
     [Inject]
     public void Construct(MoneyManager money)
@@ -24,6 +25,17 @@ public class SalesTable : MonoBehaviour
     void Start()
     {
         CacheGrassData();
+        customerCheckTimer = customerCheckInterval;
+    }
+
+    void Update()
+    {
+        customerCheckTimer -= Time.deltaTime;
+        if (customerCheckTimer <= 0f)
+        {
+            CheckCustomerPurchase();
+            customerCheckTimer = customerCheckInterval;
+        }
     }
 
     void CacheGrassData()
@@ -43,10 +55,6 @@ public class SalesTable : MonoBehaviour
         if (other.GetComponent<PlayerController>() != null)
         {
             TransferInventoryToTable();
-            if (!isSelling && tableInventory.GetAllStacks().Any(s => s.IsFull))
-            {
-                StartSellingProcess().Forget();
-            }
         }
     }
 
@@ -65,44 +73,70 @@ public class SalesTable : MonoBehaviour
         playerInventory.onInventoryChanged?.Invoke();
     }
 
-    async UniTaskVoid StartSellingProcess()
+    void CheckCustomerPurchase()
     {
-        isSelling = true;
+        if (queueManager == null) return;
 
-        while (tableInventory.GetAllStacks().Any(s => s.IsFull))
+        Customer first = queueManager.GetFirstCustomer();
+        if (first == null || first.state != CustomerState.InQueue) return;
+
+        if (CanFulfillOrder(first.order))
         {
-            await UniTask.Delay(System.TimeSpan.FromSeconds(sellInterval));
+            TransferCubesToCustomer(first);
+            first.StartLeaving(exitPoint);
+            queueManager.RemoveCustomer(first);
+            queueManager.ShiftQueue();
+        }
+    }
 
-            if (tableInventory.GetAllStacks().Any(s => s.IsFull))
+    bool CanFulfillOrder(CustomerOrder order)
+    {
+        if (order == null || order.requirements == null) return false;
+
+        foreach (var requirement in order.requirements)
+        {
+            int available = tableInventory.GetAllStacks()
+                .Where(s => s.IsFull && s.type == requirement.Key)
+                .Count();
+            
+            if (available < requirement.Value) return false;
+        }
+        return true;
+    }
+
+    void TransferCubesToCustomer(Customer customer)
+    {
+        if (customer == null || customer.order == null) return;
+
+        foreach (var requirement in customer.order.requirements)
+        {
+            GrassType type = requirement.Key;
+            int needed = requirement.Value;
+
+            var matchingStacks = tableInventory.GetAllStacks()
+                .Where(s => s.IsFull && s.type == type)
+                .Take(needed)
+                .ToList();
+
+            foreach (var stack in matchingStacks)
             {
-                SellOneCube();
+                customer.ReceiveGrass(stack.type, stack.color, stack.count);
+
+                int price = 100;
+                if (grassDataCache.TryGetValue(stack.type, out GrassData data))
+                {
+                    price = data.pricePerStack;
+                }
+
+                if (moneyManager != null)
+                {
+                    moneyManager.AddMoney(price);
+                }
+
+                tableInventory.GetAllStacks().Remove(stack);
             }
         }
 
-        isSelling = false;
-    }
-
-    void SellOneCube()
-    {
-        if (tableInventory == null) return;
-
-        var fullStacks = tableInventory.GetAllStacks().Where(s => s.IsFull).ToList();
-        if (fullStacks.Count == 0) return;
-
-        var stackToSell = fullStacks[0];
-        
-        int price = 100;
-        if (grassDataCache.TryGetValue(stackToSell.type, out GrassData data))
-        {
-            price = data.pricePerStack;
-        }
-
-        if (moneyManager != null)
-        {
-            moneyManager.AddMoney(price);
-        }
-
-        tableInventory.GetAllStacks().Remove(stackToSell);
         tableInventory.onInventoryChanged?.Invoke();
     }
 
@@ -114,6 +148,12 @@ public class SalesTable : MonoBehaviour
         {
             Gizmos.matrix = transform.localToWorldMatrix;
             Gizmos.DrawWireCube(boxCollider.center, boxCollider.size);
+        }
+
+        if (exitPoint != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(exitPoint.position, 0.5f);
         }
     }
 }

@@ -18,3 +18,4 @@ MonoBehaviour:
   spacing: 0.1
   randomOffsetRadius: 0.2
   randomScale: 0.3
+  pricePerStack: 300

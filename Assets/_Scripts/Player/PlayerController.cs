@@ -3,6 +3,8 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     public float moveSpeed = 5f;
+    public Transform modelTransform;
+    public float rotationSpeed = 10f;
 
     void Update()
     {
@@ -14,6 +16,12 @@ public class PlayerController : MonoBehaviour
         if (direction.magnitude > 0.1f)
         {
             transform.position += direction * moveSpeed * Time.deltaTime;
+
+            if (modelTransform != null)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(direction);
+                modelTransform.rotation = Quaternion.Lerp(modelTransform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
         }
     }
 }

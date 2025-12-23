@@ -2,26 +2,30 @@ using UnityEngine;
 
 public class MoneyManager : MonoBehaviour
 {
-    public int money = 0;
+    public int redCurrency = 0;
+    public int yellowCurrency = 0;
 
-    public void AddMoney(int amount)
+    public void AddRedCurrency(int amount)
     {
-        money += amount;
-        Debug.Log($"Money: +{amount} (Total: {money})");
+        redCurrency += amount;
     }
 
-    public bool SpendMoney(int amount)
+    public void AddYellowCurrency(int amount)
     {
-        if (money >= amount)
+        yellowCurrency += amount;
+    }
+
+    public bool SpendCurrency(int red, int yellow)
+    {
+        if (redCurrency >= red && yellowCurrency >= yellow)
         {
-            money -= amount;
+            redCurrency -= red;
+            yellowCurrency -= yellow;
             return true;
         }
         return false;
     }
 
-    public int GetMoney()
-    {
-        return money;
-    }
+    public int GetRedCurrency() => redCurrency;
+    public int GetYellowCurrency() => yellowCurrency;
 }

@@ -7,6 +7,7 @@ public class Customer : MonoBehaviour
     public CustomerState state = CustomerState.Wandering;
     public CustomerOrder order;
     public GrassInventory inventory;
+    public Animator animator;
 
     NavMeshAgent agent;
     QueueManager assignedQueue;
@@ -46,6 +47,12 @@ public class Customer : MonoBehaviour
             case CustomerState.Leaving:
                 UpdateLeaving();
                 break;
+        }
+
+        if (animator != null && agent != null)
+        {
+            float speed = agent.velocity.magnitude / agent.speed;
+            animator.SetFloat("Speed", speed);
         }
     }
 

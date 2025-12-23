@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using Zenject;
+using UnityEngine.Events;
 
 public class SalesTable : MonoBehaviour
 {
@@ -11,10 +12,14 @@ public class SalesTable : MonoBehaviour
     public Transform exitPoint;
     public float customerCheckInterval = 1f;
 
+    public UnityEvent onGrassSold;
+
     MoneyManager moneyManager;
     Dictionary<GrassType, GrassData> grassDataCache = new Dictionary<GrassType, GrassData>();
 
     float customerCheckTimer;
+    string cachedDebugText = "";
+    bool needsTextUpdate = true;
 
     [Inject]
     public void Construct(MoneyManager money)
@@ -26,6 +31,24 @@ public class SalesTable : MonoBehaviour
     {
         CacheGrassData();
         customerCheckTimer = customerCheckInterval;
+        
+        if (tableInventory != null)
+        {
+            tableInventory.onInventoryChanged.AddListener(MarkTextDirty);
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (tableInventory != null)
+        {
+            tableInventory.onInventoryChanged.RemoveListener(MarkTextDirty);
+        }
+    }
+
+    void MarkTextDirty()
+    {
+        needsTextUpdate = true;
     }
 
     void Update()
@@ -122,22 +145,63 @@ public class SalesTable : MonoBehaviour
             {
                 customer.ReceiveGrass(stack.type, stack.color, stack.count);
 
-                int price = 100;
                 if (grassDataCache.TryGetValue(stack.type, out GrassData data))
                 {
-                    price = data.pricePerStack;
-                }
-
                 if (moneyManager != null)
                 {
-                    moneyManager.AddMoney(price);
+                        moneyManager.AddRedCurrency(data.redCurrencyPerStack);
+                        moneyManager.AddYellowCurrency(data.yellowCurrencyPerStack);
+                    }
                 }
 
                 tableInventory.GetAllStacks().Remove(stack);
             }
         }
 
+        onGrassSold?.Invoke();
         tableInventory.onInventoryChanged?.Invoke();
+    }
+
+    void UpdateDebugText()
+    {
+            string text = "--- SALES TABLE ---\n";
+
+            if (tableInventory != null)
+            {
+                var fullStacks = tableInventory.GetAllStacks().Where(s => s.IsFull).ToList();
+                text += $"Total stacks: {fullStacks.Count}\n";
+
+                if (fullStacks.Count > 0)
+                {
+                    var grouped = fullStacks.GroupBy(s => s.type);
+                    foreach (var group in grouped)
+                    {
+                        text += $"  {group.Key}: {group.Count()}\n";
+                    }
+                }
+                else
+                {
+                    text += "  Empty\n";
+                }
+            }
+
+            if (queueManager != null)
+            {
+                text += $"\nQueue: {queueManager.GetQueuePosition(null) + 1} customers\n";
+
+                Customer first = queueManager.GetFirstCustomer();
+                if (first != null && first.order != null)
+                {
+                    text += "First wants:\n";
+                    foreach (var req in first.order.requirements)
+                    {
+                        text += $"  {req.Key}x{req.Value}\n";
+                    }
+                }
+            }
+
+        cachedDebugText = text;
+        needsTextUpdate = false;
     }
 
     void OnDrawGizmosSelected()
@@ -154,6 +218,35 @@ public class SalesTable : MonoBehaviour
         {
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(exitPoint.position, 0.5f);
+        }
+    }
+
+    void OnGUI()
+    {
+        if (Camera.main == null) return;
+
+        if (needsTextUpdate)
+        {
+            UpdateDebugText();
+        }
+
+        Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 2f);
+        
+        if (screenPos.z > 0)
+        {
+            screenPos.y = Screen.height - screenPos.y;
+
+            GUIStyle style = new GUIStyle(GUI.skin.box);
+            style.fontSize = 14;
+            style.normal.textColor = Color.white;
+            style.alignment = TextAnchor.UpperLeft;
+            style.padding = new RectOffset(10, 10, 10, 10);
+
+            Vector2 size = style.CalcSize(new GUIContent(cachedDebugText));
+            size.x += 20;
+            size.y += 20;
+
+            GUI.Box(new Rect(screenPos.x - size.x * 0.5f, screenPos.y - size.y * 0.5f, size.x, size.y), cachedDebugText, style);
         }
     }
 }

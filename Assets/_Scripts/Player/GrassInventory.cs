@@ -9,6 +9,24 @@ public class GrassInventory : MonoBehaviour
     public UnityEvent onInventoryChanged;
 
     List<InventoryStack> stacks = new List<InventoryStack>();
+    Dictionary<GrassType, int> grassMaxCountCache = new Dictionary<GrassType, int>();
+
+    void Start()
+    {
+        CacheGrassMaxCounts();
+    }
+
+    void CacheGrassMaxCounts()
+    {
+        GrassFieldRenderer[] fields = FindObjectsOfType<GrassFieldRenderer>();
+        foreach (var field in fields)
+        {
+            if (field.grassData != null && !grassMaxCountCache.ContainsKey(field.grassData.type))
+            {
+                grassMaxCountCache[field.grassData.type] = field.grassData.grassPerStack;
+            }
+        }
+    }
 
     public bool IsFull()
     {
@@ -41,7 +59,8 @@ public class GrassInventory : MonoBehaviour
             {
                 if (IsFull()) break;
 
-                var newStack = new InventoryStack(type, color);
+                int maxCount = grassMaxCountCache.ContainsKey(type) ? grassMaxCountCache[type] : 100;
+                var newStack = new InventoryStack(type, color, maxCount);
                 stacks.Add(newStack);
                 remaining = newStack.AddGrass(remaining);
             }

@@ -58,7 +58,13 @@ public class QueueManager : MonoBehaviour
 
     public int GetQueuePosition(Customer customer)
     {
+        if (customer == null) return queue.Count;
         return queue.IndexOf(customer);
+    }
+
+    public int GetQueueCount()
+    {
+        return queue.Count;
     }
 
     void OnDrawGizmosSelected()

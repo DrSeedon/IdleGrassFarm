@@ -9,6 +9,8 @@ public class GrassData : ScriptableObject
     public float spacing = 0.5f;
     public float randomOffsetRadius = 0.2f;
     public float randomScale = 0.3f;
-    public int pricePerStack = 100;
+    public int grassPerStack = 100;
+    public int redCurrencyPerStack = 10;
+    public int yellowCurrencyPerStack = 5;
 }
 

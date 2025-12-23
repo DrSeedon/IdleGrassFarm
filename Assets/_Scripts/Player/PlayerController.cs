@@ -1,10 +1,17 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 5f;
     public Transform modelTransform;
-    public float rotationSpeed = 10f;
+    public Animator animator;
+
+    NavMeshAgent agent;
+
+    void Awake()
+    {
+        agent = GetComponent<NavMeshAgent>();
+    }
 
     void Update()
     {
@@ -15,13 +22,33 @@ public class PlayerController : MonoBehaviour
 
         if (direction.magnitude > 0.1f)
         {
-            transform.position += direction * moveSpeed * Time.deltaTime;
-
-            if (modelTransform != null)
+            Vector3 targetPosition = transform.position + direction * 10f;
+            
+            if (agent != null)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                modelTransform.rotation = Quaternion.Lerp(modelTransform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                agent.isStopped = false;
+                agent.SetDestination(targetPosition);
             }
+
+            if (modelTransform != null && agent != null && agent.velocity.sqrMagnitude > 0.01f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(agent.velocity.normalized);
+                modelTransform.rotation = Quaternion.Lerp(modelTransform.rotation, targetRotation, 10f * Time.deltaTime);
+            }
+        }
+        else
+        {
+            if (agent != null)
+            {
+                agent.isStopped = true;
+                agent.velocity = Vector3.zero;
+            }
+        }
+
+        if (animator != null && agent != null)
+        {
+            float speed = agent.velocity.magnitude / agent.speed;
+            animator.SetFloat("Speed", speed);
         }
     }
 }

@@ -14,7 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GrassData
   type: 0
   color: {r: 0.5019608, g: 1, b: 0.5019608, a: 1}
-  respawnTime: 3
+  respawnTime: 30
   spacing: 0.1
   randomOffsetRadius: 0.2
   randomScale: 0.3
+  grassPerStack: 200
+  redCurrencyPerStack: 0
+  yellowCurrencyPerStack: 15

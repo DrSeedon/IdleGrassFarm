@@ -76,7 +76,7 @@ Material:
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _TrampleRadius: 1.5
-    - _TrampleStrength: 0.791
+    - _TrampleStrength: 0.5
     - _UVSec: 0
     - _WindScale: 2
     - _WindSpeed: 1

@@ -87,3 +87,5 @@ Thumbs.db
 # UnityPackage files in root (templates, etc)
 /*.unitypackage
 /*.unitypackage.meta
+
+/Build_IdleGrassFarm/
